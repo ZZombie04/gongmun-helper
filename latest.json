@@ -1,0 +1,8 @@
+{
+ "version": "1.1.0",
+ "released": "2026-09-27",
+ "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.1.0/GongmunHelper_Setup_v1.1.0.zip",
+ "sha256": "802af6f94c933a1f8639f6c3c5e99394bc3fdc0e7230ea0a152532ffb33534bf",
+ "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
+ "notes": "서식 자동완성 [서식] 탭(경기도교육청 기안문 서식 237종·한 줄 메모 채우기·AI 초안 정리·본문에 넣기), 새 버전 알림·한 번에 설치 추가"
+}

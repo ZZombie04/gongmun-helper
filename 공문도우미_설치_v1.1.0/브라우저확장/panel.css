@@ -1,0 +1,92 @@
+/* 공문 도우미 — 데이터취합 제출기관 일괄추가 패널 */
+
+#gmd-tab {
+  position: fixed; right: 0; top: 40%; z-index: 2147482000;
+  width: 34px; padding: 14px 0 16px;
+  background: #2563eb; color: #fff;
+  border-radius: 10px 0 0 10px; cursor: pointer; text-align: center;
+  font: bold 12px/1.45 "맑은 고딕", "Malgun Gothic", sans-serif; letter-spacing: 1px;
+  box-shadow: -3px 3px 12px rgba(15, 23, 42, .3); user-select: none;
+}
+#gmd-tab:hover { background: #1d4ed8; }
+
+#gmd-panel {
+  position: fixed; z-index: 2147482100; width: 400px;
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 12px;
+  box-shadow: 0 14px 44px rgba(15, 23, 42, .34); overflow: hidden; display: none;
+  font: 12px/1.55 "맑은 고딕", "Malgun Gothic", sans-serif; color: #0f172a;
+}
+.gmd-head {
+  background: #0f172a; color: #fff; padding: 9px 12px; cursor: move; user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.gmd-head h3 { margin: 0; font-size: 13px; font-weight: bold; }
+.gmd-head h3 em { font-style: normal; color: #93c5fd; font-weight: normal; font-size: 11px; margin-left: 6px; }
+.gmd-x { cursor: pointer; color: #94a3b8; font-size: 15px; padding: 0 4px; }
+.gmd-x:hover { color: #fff; }
+
+.gmd-body { padding: 12px; max-height: 60vh; overflow-y: auto; }
+.gmd-sec { margin-bottom: 14px; }
+.gmd-sec > h4 { margin: 0 0 3px; font-size: 12.5px; color: #0f172a; font-weight: bold;
+                letter-spacing: -.2px; }
+/* 제목 앞의 번호 배지 */
+.gmd-num { display: inline-block; width: 17px; height: 17px; line-height: 17px;
+           margin-right: 6px; border-radius: 9px; background: #2563eb; color: #fff;
+           font-size: 10.5px; text-align: center; vertical-align: 1px; }
+/* 설명은 제목 아래줄로 내린다 */
+.gmd-hint { display: block; margin: 0 0 7px 23px; color: #94a3b8; font-weight: normal;
+            font-size: 11px; line-height: 1.5; }
+
+/* 소속 고르기 */
+.gmd-minis { margin-bottom: 7px; }
+.gmd-mini { display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 10px;
+            border: 1px solid #cbd5e1; background: #fff; color: #475569; font-size: 10.5px;
+            cursor: pointer; }
+.gmd-mini:hover { border-color: #2563eb; color: #2563eb; }
+.gmd-chips { max-height: 108px; overflow-y: auto; }
+.gmd-chip { display: inline-block; margin: 0 4px 4px 0; padding: 3px 9px; border-radius: 12px;
+            border: 1px solid #cbd5e1; background: #fff; color: #475569; font-size: 11px;
+            cursor: pointer; white-space: nowrap; }
+.gmd-chip:hover { border-color: #94a3b8; }
+.gmd-chip.on { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: bold; }
+.gmd-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 10px; background: #f8fafc; }
+
+.gmd-ta {
+  width: 100%; height: 130px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px;
+  font: 12px/1.6 "맑은 고딕", monospace; resize: vertical; box-sizing: border-box;
+}
+.gmd-ta:focus { border-color: #2563eb; outline: none; }
+
+.gmd-foot { border-top: 1px solid #e2e8f0; padding: 9px 12px; display: flex;
+  align-items: center; justify-content: space-between; }
+.gmd-stat { color: #64748b; font-size: 11px; }
+.gmd-btn {
+  padding: 7px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;
+  color: #334155; cursor: pointer; font: bold 11.5px "맑은 고딕"; margin-left: 5px;
+}
+.gmd-btn:hover { border-color: #93c5fd; color: #1d4ed8; }
+.gmd-btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+.gmd-btn.pri:hover { background: #1d4ed8; }
+.gmd-btn[disabled] { background: #e2e8f0; border-color: #e2e8f0; color: #94a3b8; cursor: default; }
+
+.gmd-bar { height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 6px; overflow: hidden; display: none; }
+.gmd-bar i { display: block; height: 5px; background: #2563eb; width: 0; transition: width .15s; }
+
+.gmd-row { padding: 7px 9px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 5px; background: #fff; }
+.gmd-row .nm { font-weight: bold; }
+.gmd-row .dt { color: #64748b; font-size: 11px; margin-top: 2px; }
+.gmd-tag { display: inline-block; min-width: 50px; text-align: center; padding: 1px 7px;
+  border-radius: 10px; font-size: 10px; font-weight: bold; color: #fff; margin-right: 6px; }
+.gmd-added { background: #16a34a; } .gmd-dup { background: #0ea5e9; }
+.gmd-many { background: #d97706; } .gmd-none { background: #dc2626; }
+.gmd-error { background: #991b1b; }
+
+.gmd-note { background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+  padding: 8px 10px; border-radius: 6px; font-size: 11px; margin-bottom: 10px; }
+.gmd-good { background: #f0fdfa; border: 1px solid #99f6e4; color: #115e59;
+  padding: 8px 10px; border-radius: 6px; font-size: 11px; margin-bottom: 10px; }
+
+.gmd-credit { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 6px 12px;
+  text-align: center; font-size: 10.5px; color: #94a3b8; }
+.gmd-credit a { color: #2563eb; text-decoration: none; font-weight: bold; }
+.gmd-credit a:hover { text-decoration: underline; }

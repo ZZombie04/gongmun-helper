@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "공문 도우미 — 데이터취합 제출기관 자동추가",
+  "version": "1.0.0",
+  "description": "데이터취합의 제출기관(수신자) 지정에서 기관 목록을 넣으면 검색·선택·추가까지 자동으로 처리합니다. 제작 · 평택교육지원청 장학사 강주원",
+  "author": "평택교육지원청 장학사 강주원",
+  "minimum_chrome_version": "111",
+  "permissions": [
+    "debugger",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.edmgr.kr/*",
+    "https://goe.eduptl.kr/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.edmgr.kr/*"
+      ],
+      "js": [
+        "regions.js",
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://goe.eduptl.kr/*"
+      ],
+      "js": [
+        "portal.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "공문 도우미 — 제출기관 자동추가",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
