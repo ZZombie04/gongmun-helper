@@ -1,8 +1,8 @@
 {
- "version": "1.1.0",
- "released": "2026-09-27",
- "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.1.0/GongmunHelper_Setup_v1.1.0.zip",
- "sha256": "802af6f94c933a1f8639f6c3c5e99394bc3fdc0e7230ea0a152532ffb33534bf",
+ "version": "1.1.1",
+ "released": "2026-09-28",
+ "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.1.1/GongmunHelper_Setup_v1.1.1.zip",
+ "sha256": "5d90af7f4ec36b4116eacf744cb16af24acfabdbacc792e0d8fdb112f63366ad",
  "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
- "notes": "서식 자동완성 [서식] 탭(경기도교육청 기안문 서식 237종·한 줄 메모 채우기·AI 초안 정리·본문에 넣기), 새 버전 알림·한 번에 설치 추가"
+ "notes": "자동 시작을 로그온 예약 작업으로 바꿔 안정화하고, 설치·삭제를 투명한 방식으로 정리했습니다(백신·SmartScreen 오탐 감소). VBScript 방식 제거. 검사·서식 자동완성 등 기능은 그대로입니다."
 }
