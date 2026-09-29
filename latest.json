@@ -1,8 +1,8 @@
 {
- "version": "1.1.1",
- "released": "2026-09-28",
- "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.1.1/GongmunHelper_Setup_v1.1.1.zip",
- "sha256": "5d90af7f4ec36b4116eacf744cb16af24acfabdbacc792e0d8fdb112f63366ad",
+ "version": "1.2.0",
+ "released": "2026-09-29",
+ "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.2.0/GongmunHelper_Setup_v1.2.0.zip",
+ "sha256": "f9b8a9b2cc0f90a941d327ca01c5c79d8411de590dc9489727030a4132db7cf4",
  "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
- "notes": "자동 시작을 로그온 예약 작업으로 바꿔 안정화하고, 설치·삭제를 투명한 방식으로 정리했습니다(백신·SmartScreen 오탐 감소). VBScript 방식 제거. 검사·서식 자동완성 등 기능은 그대로입니다."
+ "notes": "서식 자동완성을 [공문도우미] 패널의 [작성] 탭으로 합쳤습니다(따로 뜨던 [서식] 탭 없음). [문서에 넣기]로 제목·본문을 기안 문서에 바로 넣고 [되돌리기]·[검사하기]로 이어집니다. v1.1.1에서 자동 시작 때 도우미가 켜지지 않던 문제를 고쳤습니다(v1.1.1을 설치한 PC는 이 판을 직접 설치하세요)."
 }

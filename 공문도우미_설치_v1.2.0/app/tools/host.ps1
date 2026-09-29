@@ -11,6 +11,7 @@ param(
 $here = $PSScriptRoot
 if (-not $here -and $env:GMH_HOME) { $here = Join-Path $env:GMH_HOME 'tools' }
 if (-not $here) { $here = (Get-Location).Path }
+$env:GMH_HOME = Split-Path -Parent $here    # 이 로더가 있는 tools 의 상위(설치 폴더)
 $dat = Join-Path $here 'host.dat'
 $b64 = [System.IO.File]::ReadAllText($dat, [System.Text.Encoding]::UTF8)
 $raw = [Convert]::FromBase64String($b64)

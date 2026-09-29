@@ -1,4 +1,4 @@
-﻿# 공문 도우미 설치 (v1.1)
+﻿# 공문 도우미 설치
 #  · 실행정책 우회·스크립트 eval·창 숨김 VBS 를 쓰지 않는다(백신·SmartScreen 오탐을 줄임).
 #  · 자동시작은 '로그온 예약 작업'으로 등록한다.
 #  · 배포된 스크립트에 자체 서명을 붙인다(실패해도 설치는 계속).
@@ -18,7 +18,7 @@ function Line($t, $c = "Gray") { Write-Host $t -ForegroundColor $c }
 
 Write-Host ""
 Line "  ============================================" "Cyan"
-Line "     공문 도우미 v1.1.1 설치" "Cyan"
+Line "     공문 도우미 v1.2.0 설치" "Cyan"
 Line "  ============================================" "Cyan"
 Write-Host ""
 Line ("  설치 위치 : " + $GMH_DEST)
@@ -42,6 +42,8 @@ Line "  [2/5] 파일을 복사합니다..."
 try {
   New-Item -ItemType Directory -Force -Path $GMH_DEST | Out-Null
   Copy-Item (Join-Path $Source "*") $GMH_DEST -Recurse -Force
+  # v1.1 이 따로 붙이던 서식 모듈 — 이제 본체의 [작성] 탭에 들어 있다
+  Remove-Item (Join-Path $GMH_DEST "dist\gmh-tpl.js") -Force -ErrorAction SilentlyContinue
 } catch {
   Line ("  [오류] 파일 복사 실패: " + $_.Exception.Message) "Red"
   if (-not $Silent) { Read-Host "  엔터를 누르면 닫힙니다" }
@@ -86,8 +88,8 @@ if ($running -gt 0) {
 } else {
   Line "   · 트레이 아이콘이 바로 안 보이면, 다시 로그인(또는 재부팅)하면 자동으로 뜹니다." "Yellow"
 }
-Line "   · K-에듀파인에서 기안 창을 열면 오른쪽에 [공문도우미] 탭,"
-Line "     왼쪽에 [서식] 탭(공문 서식 자동완성)이 자동으로 나타납니다."
+Line "   · K-에듀파인에서 기안 창을 열면 [공문도우미] 탭이 자동으로 나타납니다."
+Line "     [작성] 탭에서 서식으로 쓰고, [검사] 탭에서 점검합니다."
 Line "   · 컴퓨터를 켤 때마다 자동으로 실행됩니다."
 Write-Host ""
 if ($how -eq "none") {

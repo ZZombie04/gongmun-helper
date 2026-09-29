@@ -10,6 +10,7 @@ $GMH_OLD_LNK = Join-Path $GMH_STARTUP "공문도우미.lnk"       # 예전(1.0) 
 $GMH_CERT_SUBJECT = "CN=Gongmun Helper Self-Signed"
 
 function Gmh-HostPath { return (Join-Path $GMH_DEST "tools\host.ps1") }
+function Gmh-HostDir  { return (Join-Path $GMH_DEST "tools") }   # 호스트는 이 폴더에서 돈다(로더도 GMH_HOME 을 넣는다)
 function Gmh-Powershell { return (Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe") }
 
 # 실행 중인 호스트를 멈춘다
@@ -83,7 +84,7 @@ function Gmh-RegisterTask {
   $arg = '-NoProfile -WindowStyle Hidden -File "' + $hostPath + '" -Tray'
   try {
     if (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue) {
-      $action  = New-ScheduledTaskAction -Execute $ps -Argument $arg
+      $action  = New-ScheduledTaskAction -Execute $ps -Argument $arg -WorkingDirectory (Gmh-HostDir)
       $trigger = New-ScheduledTaskTrigger -AtLogOn
       $set     = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
       try { $set.ExecutionTimeLimit = "PT0S" } catch {}   # 시간 제한 없음(상주)
@@ -104,7 +105,7 @@ function Gmh-RegisterTask {
     $s = $sh.CreateShortcut($GMH_OLD_LNK)
     $s.TargetPath = $ps
     $s.Arguments = $arg
-    $s.WorkingDirectory = $GMH_DEST
+    $s.WorkingDirectory = (Gmh-HostDir)
     $s.Description = "공문 도우미"
     $s.Save()
     return "shortcut"
@@ -129,7 +130,7 @@ function Gmh-StartNow {
     }
   } catch {}
   try {
-    Start-Process (Gmh-Powershell) -ArgumentList ('-NoProfile -WindowStyle Hidden -File "' + (Gmh-HostPath) + '" -Tray') -WindowStyle Hidden
+    Start-Process (Gmh-Powershell) -ArgumentList ('-NoProfile -WindowStyle Hidden -File "' + (Gmh-HostPath) + '" -Tray') -WindowStyle Hidden -WorkingDirectory (Gmh-HostDir)
     return $true
   } catch { return $false }
 }
