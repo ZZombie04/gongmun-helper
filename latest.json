@@ -1,8 +1,8 @@
 {
- "version": "1.2.2",
+ "version": "1.2.3",
  "released": "2026-09-29",
- "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.2.2/GongmunHelper_Setup_v1.2.2.zip",
- "sha256": "945ba2ca657ca6cbee7b84ee1e77f23288129f4b38838204de358e8563495f25",
+ "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.2.3/GongmunHelper_Setup_v1.2.3.zip",
+ "sha256": "67bded12430f9341dd77c4534ecceb0cb79244142f4a1f7061502733a39214e6",
  "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
- "notes": "컴퓨터를 켤 때 '번들 로드'가 적힌 검은 창(Windows Terminal)이 떠 있던 것을 없앴습니다. 이제 창 없이 트레이 아이콘만 뜹니다."
+ "notes": "GitHub에서 처음 받아 설치하는 과정을 다듬었습니다. zip을 풀지 않고 실행하면 안내하고, 보안 정책 때문에 동작할 수 없는 PC는 설치 전에 알려 줍니다."
 }

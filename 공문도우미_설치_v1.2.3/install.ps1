@@ -1,7 +1,7 @@
 ﻿# 공문 도우미 설치
 #  · 창 숨김 VBS 를 쓰지 않는다. 자동시작은 '로그온 예약 작업'으로 등록한다(gmh-common.ps1).
 #  · 인증서를 만들거나 신뢰 저장소에 넣지 않는다(Windows 보안 경고가 뜨지 않게).
-param([string]$Source = "", [switch]$Silent)
+param([string]$Source = "", [switch]$Silent, [switch]$Check)   # -Check: 설치하지 않고 이 PC 에서 설치할 수 있는지만 본다
 
 $ErrorActionPreference = "Stop"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -17,7 +17,7 @@ function Line($t, $c = "Gray") { Write-Host $t -ForegroundColor $c }
 
 Write-Host ""
 Line "  ============================================" "Cyan"
-Line "     공문 도우미 v1.2.2 설치" "Cyan"
+Line "     공문 도우미 v1.2.3 설치" "Cyan"
 Line "  ============================================" "Cyan"
 Write-Host ""
 Line ("  설치 위치 : " + $GMH_DEST)
@@ -29,6 +29,28 @@ if (-not (Test-Path $Source)) {
   Line "         압축을 푼 폴더 안에서 실행해 주세요." "Yellow"
   if (-not $Silent) { Read-Host "  엔터를 누르면 닫힙니다" }
   exit 1
+}
+
+# 0) 이 PC 에서 도우미가 돌 수 있는지 먼저 본다(지금 도는 도우미를 멈추기 전에).
+#    스마트 앱 컨트롤·기관 정책(WDAC·AppLocker)이 PowerShell 을 '제한 모드'로 두면 트레이 프로그램이 동작하지 않는다.
+$langMode = [string]$ExecutionContext.SessionState.LanguageMode
+$sacState = $null
+try { $sacState = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -Name VerifiedAndReputablePolicyState -ErrorAction Stop).VerifiedAndReputablePolicyState } catch {}
+if ($langMode -ne "FullLanguage") {
+  Line ("  [중지] 이 PC 는 보안 정책으로 PowerShell 이 제한 모드(" + $langMode + ")라 공문 도우미가 동작하지 않습니다.") "Red"
+  if ($sacState -eq 1) {
+    Line "         '스마트 앱 컨트롤'이 켜져 있습니다. 설정 → 개인정보 및 보안 → Windows 보안 →" "Yellow"
+    Line "         앱 및 브라우저 컨트롤 → 스마트 앱 컨트롤 설정에서 끈 뒤 다시 설치하세요." "Yellow"
+  } else {
+    Line "         학교(기관) 정보 담당자에게 PowerShell 스크립트 실행 허용을 문의하세요." "Yellow"
+  }
+  Line "         (설치된 것은 없고, 이 PC 는 바뀐 것이 없습니다.)" "DarkGray"
+  if (-not $Silent -and -not $Check) { Read-Host "  엔터를 누르면 닫힙니다" }
+  exit 1
+}
+if ($Check) {
+  Line ("  점검 통과: 이 PC 에 설치할 수 있습니다. (LanguageMode=" + $langMode + ", 스마트 앱 컨트롤=" + $(if ($null -eq $sacState) { "없음" } else { $sacState }) + ")") "Green"
+  exit 0
 }
 
 # 1) 실행 중인 공문 도우미 종료
