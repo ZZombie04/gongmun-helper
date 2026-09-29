@@ -1,4 +1,4 @@
-﻿# 공문 도우미 제거 (v1.1)
+﻿# 공문 도우미 제거
 param([switch]$Silent, [switch]$Yes)
 $ErrorActionPreference = "Continue"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -16,7 +16,7 @@ Line "     공문 도우미 제거" "Cyan"
 Line "  ============================================" "Cyan"
 Write-Host ""
 Line ("  " + $GMH_DEST + " 를 삭제하고")
-Line "  자동 시작(예약 작업)과 서명 인증서를 지웁니다."
+Line "  자동 시작(예약 작업)을 지웁니다."
 Write-Host ""
 $ans = if ($Yes) { "Y" } else { Read-Host "  정말 제거할까요? (Y/N)" }
 if ($ans -notmatch '^[Yy]') {
@@ -35,8 +35,11 @@ Line "  [2/4] 자동 시작 등록을 지웁니다..."
 Gmh-UnregisterTask
 Gmh-RemoveLegacyStartup
 
-Line "  [3/4] 서명 인증서를 지웁니다..."
-Gmh-RemoveCert
+Line "  [3/4] 예전 판이 만든 인증서를 정리합니다..."
+if (Gmh-HasRootCert) {
+  Line "        '신뢰할 수 있는 루트'에서 지울 때 Windows 확인 창이 뜹니다. [예] 를 누르세요." "Yellow"
+}
+[void](Gmh-RemoveOldCert -IncludeRoot)
 
 Line "  [4/4] 설치 폴더를 지웁니다..."
 Set-Location $env:TEMP

@@ -1,8 +1,8 @@
 {
- "version": "1.2.0",
+ "version": "1.2.1",
  "released": "2026-09-29",
- "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.2.0/GongmunHelper_Setup_v1.2.0.zip",
- "sha256": "f9b8a9b2cc0f90a941d327ca01c5c79d8411de590dc9489727030a4132db7cf4",
+ "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.2.1/GongmunHelper_Setup_v1.2.1.zip",
+ "sha256": "c9ca6198528420147e23f33d92b3f83e819519dbd2274da56fa5961eb279437e",
  "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
- "notes": "서식 자동완성을 [공문도우미] 패널의 [작성] 탭으로 합쳤습니다(따로 뜨던 [서식] 탭 없음). [문서에 넣기]로 제목·본문을 기안 문서에 바로 넣고 [되돌리기]·[검사하기]로 이어집니다. v1.1.1에서 자동 시작 때 도우미가 켜지지 않던 문제를 고쳤습니다(v1.1.1을 설치한 PC는 이 판을 직접 설치하세요)."
+ "notes": "설치할 때 뜨던 인증서 보안 경고(Security Warning)를 없앴고, 실행 정책을 바꾼 적 없는 PC에서도 컴퓨터를 켜면 도우미가 자동으로 뜨게 고쳤습니다. v1.1.1·v1.2.0을 설치한 PC는 이 판을 한 번 직접 설치하세요."
 }
