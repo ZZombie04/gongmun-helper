@@ -17,7 +17,7 @@ function Line($t, $c = "Gray") { Write-Host $t -ForegroundColor $c }
 
 Write-Host ""
 Line "  ============================================" "Cyan"
-Line "     공문 도우미 v1.2.1 설치" "Cyan"
+Line "     공문 도우미 v1.2.2 설치" "Cyan"
 Line "  ============================================" "Cyan"
 Write-Host ""
 Line ("  설치 위치 : " + $GMH_DEST)

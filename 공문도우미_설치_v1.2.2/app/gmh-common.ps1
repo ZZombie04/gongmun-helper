@@ -58,6 +58,25 @@ function Gmh-LaunchArgs([string]$Mode = "-Tray", $Locked = $null) {
   return '-NoProfile -WindowStyle Hidden -Command "' + $cmd + '"'
 }
 
+# 창 없이 띄우기: Windows 11 은 콘솔을 Windows Terminal 창으로 넘기는데, powershell 의 -WindowStyle Hidden 은
+# 그 창을 숨기지 못한다(v1.2.1 까지 '번들 로드' 창이 떠 있던 이유). conhost --headless 는 창이 없는 콘솔이라
+# 창도 Windows Terminal 도 생기지 않는다(Windows 10 1809=빌드 17763 이상). 그보다 오래된 Windows 는 powershell 을
+# 바로 실행한다(콘솔 창이 잠깐 보였다가 숨는다).
+function Gmh-Conhost {
+  $c = Join-Path $env:WINDIR "System32\conhost.exe"
+  if ([Environment]::OSVersion.Version.Build -ge 17763 -and (Test-Path $c)) { return $c }
+  return $null
+}
+
+# 예약 작업·바로가기·즉시 실행이 쓰는 실행 파일과 인자: @(실행 파일, 인자)
+function Gmh-LaunchCommand([string]$Mode = "-Tray", $Locked = $null, $Headless = $null) {
+  $ps = Gmh-Powershell
+  $arg = Gmh-LaunchArgs -Mode $Mode -Locked $Locked
+  $c = if ($null -eq $Headless) { Gmh-Conhost } elseif ($Headless) { Join-Path $env:WINDIR "System32\conhost.exe" } else { $null }
+  if ($c) { return @($c, ('--headless "' + $ps + '" ' + $arg)) }
+  return @($ps, $arg)
+}
+
 # v1.1.1~1.2.0 이 만든 서명 인증서를 정리한다. 지운 개수를 돌려준다.
 #  · 개인 키가 든 '개인' 저장소와 '신뢰할 수 있는 게시자'에서는 조용히 지운다(확인 창 없음).
 #    키가 없어지면 '신뢰할 수 있는 루트'에 이름이 남아도 아무것도 서명할 수 없어 효력이 없다.
@@ -88,11 +107,11 @@ function Gmh-HasRootCert {
 
 # 로그온 예약 작업 등록 — 로그인하면 호스트가 조용히 뜬다(관리자 권한 불필요, 현재 사용자만)
 function Gmh-RegisterTask {
-  $ps = Gmh-Powershell
-  $arg = Gmh-LaunchArgs
+  $cmd = Gmh-LaunchCommand
+  $exe = $cmd[0]; $arg = $cmd[1]
   try {
     if (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue) {
-      $action  = New-ScheduledTaskAction -Execute $ps -Argument $arg -WorkingDirectory (Gmh-HostDir)
+      $action  = New-ScheduledTaskAction -Execute $exe -Argument $arg -WorkingDirectory (Gmh-HostDir)
       $trigger = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
       $set     = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
       try { $set.ExecutionTimeLimit = "PT0S" } catch {}   # 시간 제한 없음(상주)
@@ -105,7 +124,7 @@ function Gmh-RegisterTask {
     New-Item -ItemType Directory -Force -Path $GMH_STARTUP | Out-Null
     $sh = New-Object -ComObject WScript.Shell
     $s = $sh.CreateShortcut($GMH_OLD_LNK)
-    $s.TargetPath = $ps
+    $s.TargetPath = $exe
     $s.Arguments = $arg
     $s.WorkingDirectory = (Gmh-HostDir)
     $s.WindowStyle = 7                                   # 최소화로 시작
@@ -133,7 +152,8 @@ function Gmh-StartNow {
     }
   } catch {}
   try {
-    Start-Process (Gmh-Powershell) -ArgumentList (Gmh-LaunchArgs) -WindowStyle Hidden -WorkingDirectory (Gmh-HostDir)
+    $cmd = Gmh-LaunchCommand
+    Start-Process $cmd[0] -ArgumentList $cmd[1] -WindowStyle Hidden -WorkingDirectory (Gmh-HostDir)
     return $true
   } catch { return $false }
 }
