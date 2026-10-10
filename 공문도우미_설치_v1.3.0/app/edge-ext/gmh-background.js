@@ -1,5 +1,6 @@
 /* =============================================================================
  * 공문 도우미 — 데이터취합 자동추가 (백그라운드)
+ *   sw.js 가 장바구니 품의 백그라운드와 함께 불러온다(확장에는 서비스 워커가 하나뿐).
  *
  *  이 사이트(eXBuilder6)는 스크립트가 만든 마우스 이벤트를 무시한다.
  *  그래서 디버거 프로토콜로 '진짜' 입력 이벤트를 보낸다.
@@ -95,6 +96,8 @@ async function handle(msg, tabId) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // 데이터취합 화면이 보내는 {cmd} 만 받는다. 장바구니 품의 옆 패널의 메시지({kind})는 pumui-background.js 가 처리한다.
+  if (!msg || typeof msg.cmd !== 'string') return false;
   const tabId = sender.tab && sender.tab.id;
   if (!tabId) { sendResponse({ ok: false, error: '탭을 알 수 없습니다.' }); return true; }
   handle(msg, tabId)
