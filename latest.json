@@ -1,8 +1,8 @@
 {
- "version": "1.3.0",
- "released": "2026-10-10",
- "zip": "https://github.com/ZZombie04/gongmun-helper/releases/download/v1.3.0/GongmunHelper_Setup_v1.3.0.zip",
- "sha256": "946f74355954a7b5fb3d7c0526b37685c8049b7d3379714acaf56223443551ab",
- "page": "https://github.com/ZZombie04/gongmun-helper/releases/latest",
- "notes": "[작성] 탭 서식을 383종으로 늘리고 모든 본문을 새로 썼습니다. 학교용 · 교육청용을 골라 쓰고, 검색 말고도 분야 → 업무 → 서식 차례로 눌러 고를 수 있습니다. 브라우저 확장에 장바구니 품의(쇼핑몰 장바구니 → K-에듀파인 품의등록 품목내역)가 들어왔습니다."
+ "version": "1.4.0",
+ "released": "2026-10-13",
+ "zip": "https://raw.githubusercontent.com/ZZombie04/gongmun-helper/v1.4.0/%EA%B3%B5%EB%AC%B8%EB%8F%84%EC%9A%B0%EB%AF%B8_%EC%84%A4%EC%B9%98_v1.4.0_%EC%86%8D%EC%84%B1%EC%97%90%EC%84%9C_%EC%B0%A8%EB%8B%A8%ED%95%B4%EC%A0%9C_%ED%9B%84_%EC%95%95%EC%B6%95%ED%92%80%EA%B8%B0.zip",
+ "sha256": "2451a0ee385c345cf43486a585f9d23411e55359b93393a6f341bf18d6093fd9",
+ "page": "https://github.com/ZZombie04/gongmun-helper#readme",
+ "notes": "받은 zip 을 [차단 해제] 하지 않고 풀어도 설치되고, 설치한 뒤 실제로 뜨는지 점검해 안 되면 이유를 알려 줍니다. 제거가 끝까지 됩니다. 수신자 일괄추가에서 한 번 실행한 뒤 실행 단추가 사라지던 문제를 고쳤고 [처음부터 다시] · [다시 시도] 가 생겼습니다. [작성] 탭의 표가 한글 표로 들어갑니다."
 }
