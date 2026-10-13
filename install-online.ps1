@@ -20,6 +20,7 @@ try {
   [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
   Write-Host ""
   Say "  \uACF5\uBB38 \uB3C4\uC6B0\uBBF8\uB97C \uB0B4\uB824\uBC1B\uC2B5\uB2C8\uB2E4..." "Cyan"
+  Say "  (\uD1B5\uC2E0\uB9DD\uC5D0 \uB530\uB77C 1\uBD84\uCBE4 \uAC78\uB9B4 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uCC3D\uC744 \uB2EB\uC9C0 \uB9D0\uACE0 \uAE30\uB2E4\uB824 \uC8FC\uC138\uC694)" "DarkGray"
 
   $wc = New-Object System.Net.WebClient
   $wc.Encoding = [System.Text.Encoding]::UTF8

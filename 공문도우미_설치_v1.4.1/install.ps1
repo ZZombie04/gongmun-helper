@@ -27,7 +27,7 @@ if (-not $commonOk) {
   try { . ([scriptblock]::Create([System.IO.File]::ReadAllText($commonPath, [System.Text.Encoding]::UTF8))); $commonOk = $true } catch {}
 }
 
-$VER = "1.4.0"
+$VER = "1.4.1"
 function Line($t, $c = "Gray") { Write-Host $t -ForegroundColor $c }
 function Done([int]$code) {
   if (-not $Silent -and -not $Check) { Write-Host ""; Read-Host "  엔터를 누르면 닫힙니다" | Out-Null }
