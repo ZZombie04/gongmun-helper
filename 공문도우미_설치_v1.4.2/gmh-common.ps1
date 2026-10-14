@@ -9,7 +9,14 @@
 #  · 파일은 '내용으로' 새로 써서 설치한다. 그래서 받은 zip 을 [차단 해제] 하지 않고 풀었어도
 #    설치된 파일에는 '인터넷에서 받음' 표시가 남지 않는다.
 #  · 인증서를 만들거나 신뢰 저장소에 넣지 않는다. (v1.1.1~1.2.0 이 만든 인증서는 Gmh-RemoveOldCert 로 정리한다.)
+#  · 도우미는 지금 로그인한 사람의 계정 · 일반 권한으로 띄운다. '관리자 권한으로 실행' 으로 설치해도
+#    도우미는 일반 권한으로 뜨고(Gmh-StartNow), 다른 계정(관리자 계정 암호를 넣은 경우)으로는 설치하지 않는다.
+#    관리자 권한 · 다른 계정으로 떠 있는 도우미는 일반 권한 프로그램이 보지도 끄지도 못하고, 사용자의
+#    기안 창에도 붙지 못하면서 트레이에는 '실행 중'으로 남는다(v1.4.1 까지 '탭이 안 뜬다' 의 원인).
+#    그런 도우미는 이름(뮤텍스)으로 알아내고(Gmh-HiddenHost), Windows 확인 창을 거쳐 끈다(Gmh-StopElevated).
 #  · 시험용 환경 변수: GMH_DEST(설치 폴더) · GMH_TASK(예약 작업 이름). 둘 다 없으면 실제 설치 위치를 쓴다.
+#    GMH_MUTEX · GMH_LEGACY_MUTEX(도우미 이름) · GMH_NO_ELEVATE(확인 창을 띄우지 않음) ·
+#    GMH_TEST_SESSION_USER · GMH_TEST_ELEVATED(다른 계정 · 관리자 권한 흉내, 시험 설치에서만)
 
 $GMH_TASK   = if ($env:GMH_TASK) { $env:GMH_TASK } else { "공문도우미" }      # 로그온 예약 작업 이름
 $GMH_DEST   = if ($env:GMH_DEST) { $env:GMH_DEST } else { Join-Path $env:LOCALAPPDATA "GongmunHelper" }
@@ -17,11 +24,12 @@ $GMH_STARTUP = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Sta
 $GMH_OLD_LNK = Join-Path $GMH_STARTUP ($GMH_TASK + ".lnk")   # 시작 바로가기(예전 1.0 방식 · 예약 작업이 막힐 때 대체)
 $GMH_CERT_SUBJECT = "CN=Gongmun Helper Self-Signed"          # v1.1.1~1.2.0 이 만들던 서명 인증서(정리용)
 $GMH_SANDBOX = [bool]($env:GMH_TASK -or $env:GMH_DEST)       # 시험 설치(실제 설치본의 프로세스는 건드리지 않는다)
+$GMH_ONCE_TASK = $GMH_TASK + "-시작"                          # 관리자 권한 창에서 도우미를 일반 권한으로 띄울 때 잠깐 쓰는 예약 작업
 
 # 프로그램 파일(다시 설치할 때 지우고 새로 쓴다). 여기 없는 것 — settings.json(설정) · update.json ·
 # host.log · install.log · autologin.log · inbox\ — 은 사용자 것이라 그대로 둔다.
 $GMH_PROGRAM_ITEMS = @("dist", "tools", "src", "data", "edge-ext", "gmh-common.ps1", "uninstall.ps1",
-                       "uninstall.cmd", "제거.bat", "run.vbs", "launch.txt", "selftest.json")
+                       "uninstall.cmd", "제거.bat", "run.vbs", "launch.txt", "selftest.json", "relaunch.txt")
 
 function Gmh-HostPath { return (Join-Path $GMH_DEST "tools\host.ps1") }
 function Gmh-HostDir  { return (Join-Path $GMH_DEST "tools") }   # 호스트는 이 폴더에서 돈다(로더도 GMH_HOME 을 넣는다)
@@ -36,13 +44,17 @@ function Gmh-Log([string]$t) {
   } catch {}
 }
 
-# 떠 있는 호스트 프로세스들(파워셸 + 창 없는 콘솔)
+# 떠 있는 호스트 프로세스들(파워셸 + 창 없는 콘솔). 이 화면(세션)의 것만 센다 — 관리자 권한 창에서는 다른 사람의
+# 로그인(세션)에 떠 있는 도우미의 명령줄도 보이는데, 그것을 끄면 안 된다.
 function Gmh-HostProcesses {
+  $sess = -1
+  try { $sess = (Get-Process -Id $PID).SessionId } catch {}
   try {
     return @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='conhost.exe'" -ErrorAction Stop |
       Where-Object {
         $c = [string]$_.CommandLine
         if (-not $c -or $_.ProcessId -eq $PID) { return $false }
+        if ($sess -ge 0 -and $_.SessionId -ne $sess) { return $false }
         if (-not ($c -like '*host.ps1*-Tray*' -or ($c -like '*GMH_HOME*' -and $c -like '*-Tray*'))) { return $false }
         if ($GMH_SANDBOX) { return ($c -like ('*' + $GMH_DEST + '*')) }
         return $true
@@ -70,6 +82,133 @@ function Gmh-StopRunning([int]$WaitMs = 8000) {
 
 function Gmh-IsRunning {
   return @(Gmh-HostProcesses | Where-Object { $_.Name -eq 'powershell.exe' }).Count
+}
+
+# ── 실행 계정 · 숨은 도우미 ────────────────────────────────────────────────
+
+# 이 세션에 로그인한 사람과 승격 여부(호스트 host.ps1 과 같은 형식 — 한 프로세스에 둘 다 올라와도 부딪치지 않는다)
+$GMH_WHO_CS = @"
+using System;
+using System.Runtime.InteropServices;
+public static class GmhWho {
+  [DllImport("wtsapi32.dll", SetLastError=true)] static extern bool WTSQuerySessionInformationW(IntPtr server, int session, int cls, out IntPtr buf, out int bytes);
+  [DllImport("wtsapi32.dll")] static extern void WTSFreeMemory(IntPtr p);
+  [DllImport("advapi32.dll", SetLastError=true)] static extern bool OpenProcessToken(IntPtr proc, uint access, out IntPtr token);
+  [DllImport("advapi32.dll", SetLastError=true)] static extern bool GetTokenInformation(IntPtr token, int cls, out int info, int len, out int ret);
+  [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  static string Query(int cls) {
+    IntPtr b; int n;
+    if (!WTSQuerySessionInformationW(IntPtr.Zero, -1, cls, out b, out n)) return "";
+    try { return Marshal.PtrToStringUni(b) ?? ""; } finally { WTSFreeMemory(b); }
+  }
+  /** 이 세션에 로그인한 사람(도메인\이름). 모르면 빈 글 */
+  public static string SessionUser() {
+    string u = Query(5), d = Query(7);
+    if (u.Length == 0) return "";
+    return d.Length == 0 ? u : d + "\\" + u;
+  }
+  /** 1 = 승격 없음(UAC 꺼짐 · 일반 사용자), 2 = 관리자 권한으로 승격됨, 3 = 일반 권한(관리자 계정의 평소 상태) */
+  public static int ElevationType() {
+    IntPtr t;
+    if (!OpenProcessToken(GetCurrentProcess(), 8, out t)) return 0;
+    try { int v, r; return GetTokenInformation(t, 18, out v, 4, out r) ? v : 0; } finally { CloseHandle(t); }
+  }
+}
+"@
+
+# @{ User(이 프로그램을 돌리는 계정) · Sid · SessionUser(이 화면에 로그인한 사람, 모르면 빈 글) · Elevated · Session }
+function Gmh-Who {
+  $o = [ordered]@{ User = ""; Sid = ""; SessionUser = ""; Elevated = $false; Session = -1 }
+  try { $id = [Security.Principal.WindowsIdentity]::GetCurrent(); $o.User = [string]$id.Name; $o.Sid = [string]$id.User.Value } catch {}
+  try { $o.Session = [int](Get-Process -Id $PID).SessionId } catch {}
+  try {
+    if (-not ("GmhWho" -as [type])) { Add-Type -TypeDefinition $GMH_WHO_CS }
+    $o.SessionUser = [GmhWho]::SessionUser()
+    $o.Elevated = ([GmhWho]::ElevationType() -eq 2)
+  } catch {}
+  if ($GMH_SANDBOX) {
+    if ($env:GMH_TEST_SESSION_USER) { $o.SessionUser = $env:GMH_TEST_SESSION_USER }
+    if ($env:GMH_TEST_ELEVATED) { $o.Elevated = $true }
+  }
+  return [pscustomobject]$o
+}
+function Gmh-IsElevated { return [bool](Gmh-Who).Elevated }
+# 이 프로그램이 이 화면에 로그인한 사람이 아닌 계정으로 돌고 있는가(둘 다 알 때만 판단한다)
+function Gmh-OtherUser($Who) {
+  if (-not $Who.SessionUser -or -not $Who.User -or $Who.SessionUser -eq $Who.User) { return $false }
+  try {   # 이름을 적는 방식만 다를 수 있으니 계정 번호(SID)로 한 번 더 맞춰 본다
+    $sid = (New-Object System.Security.Principal.NTAccount($Who.SessionUser)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    if ($sid -and $sid -eq $Who.Sid) { return $false }
+  } catch {}
+  return $true
+}
+
+# 도우미가 떠 있는 동안 잡는 이름. v1.4.2 부터는 이 세션 · 이 계정마다 하나, v1.4.1 까지는 PC 전체에서 하나였다.
+function Gmh-MutexName {
+  if ($env:GMH_MUTEX) { return $env:GMH_MUTEX }
+  return ("Local\GongmunHelperTray-" + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)
+}
+function Gmh-LegacyMutexName {
+  if ($env:GMH_LEGACY_MUTEX) { return $env:GMH_LEGACY_MUTEX }
+  if ($GMH_SANDBOX) { return "" }
+  return "Global\GongmunHelperTray"
+}
+# 그 이름을 누가 잡고 있는가(열 권한이 없어도 잡혀 있는 것이다)
+function Gmh-MutexExists([string]$Name) {
+  if (-not $Name) { return $false }
+  $m = $null
+  try { $ok = [System.Threading.Mutex]::TryOpenExisting($Name, [ref]$m); if ($m) { $m.Dispose() }; return [bool]$ok }
+  catch [System.UnauthorizedAccessException] { return $true }
+  catch { return $false }
+}
+# 이 세션에서 명령줄을 읽을 수 없는(관리자 권한 · 다른 계정으로 도는) PowerShell 의 수
+function Gmh-UnreadableInSession {
+  try {
+    $sess = (Get-Process -Id $PID).SessionId
+    return @(Get-CimInstance Win32_Process -Filter ("Name='powershell.exe' AND SessionId=" + $sess) -ErrorAction Stop |
+      Where-Object { $_.ProcessId -ne $PID -and -not $_.CommandLine }).Count
+  } catch { return 0 }
+}
+
+# 일반 권한으로는 보이지 않는 도우미가 이 화면에 떠 있는가. 보이는 도우미를 다 끈 뒤(Gmh-StopRunning)에 부른다.
+#   "ours"   : 이 세션 · 이 계정의 이름(v1.4.2 부터)이 잡혀 있다 → 관리자 권한으로 뜬 도우미가 있다
+#   "legacy" : v1.4.1 까지의 이름이 잡혀 있고, 이 세션에 명령줄을 읽을 수 없는 PowerShell 이 있다
+#              (그런 것이 없으면 다른 사람의 로그인에 떠 있는 것이라 상관없다)
+#   ""       : 없다
+function Gmh-HiddenHost {
+  if (Gmh-MutexExists (Gmh-MutexName)) { return "ours" }
+  $legacy = Gmh-LegacyMutexName
+  if ($legacy -and (Gmh-MutexExists $legacy)) {
+    if ($env:GMH_LEGACY_MUTEX -or (Gmh-UnreadableInSession) -gt 0) { return "legacy" }
+  }
+  return ""
+}
+
+# Windows 확인 창 뒤에서 도는 PowerShell 에 넘길 인자: 이 화면(세션)의 도우미 프로세스를 모두 끈다.
+# 명령 안에는 큰따옴표를 쓰지 않는다(명령 전체를 큰따옴표로 감싸 넘긴다). 시험 설치에서는 그 폴더의 도우미만 끈다.
+function Gmh-StopArgs {
+  $sess = 0
+  try { $sess = (Get-Process -Id $PID).SessionId } catch {}
+  $only = $(if ($GMH_SANDBOX) { " -and [string]`$_.CommandLine -like '*" + $GMH_DEST.Replace("'", "''") + "*'" } else { "" })
+  $cmd = "Get-CimInstance Win32_Process -Filter 'SessionId=" + $sess + "' | " +
+         'Where-Object { $_.ProcessId -ne $PID -and @(''powershell.exe'',''conhost.exe'',''wscript.exe'') -contains $_.Name -and ' +
+         '[string]$_.CommandLine -match ''host\.ps1.*-Tray|GMH_HOME.*-Tray|GongmunHelper.*run\.vbs''' + $only + ' } | ' +
+         'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }'
+  return ('-NoProfile -WindowStyle Hidden -Command "' + $cmd + '"')
+}
+
+# 관리자 권한 · 다른 계정으로 떠 있어 일반 권한으로는 끌 수 없는 도우미를 끈다.
+# Windows 확인 창(UAC)에서 [예] 를 눌러야 한다. 이 화면(세션)의 도우미만 끈다(다른 사람의 로그인은 건드리지 않는다).
+# 돌려주는 것: "done" · "cancel"([아니요] 또는 관리자 암호를 모름) · "skip"(시험 · 묻지 않기로 함)
+function Gmh-StopElevated {
+  if ($GMH_SANDBOX -or $env:GMH_NO_ELEVATE) { return "skip" }
+  try {
+    $p = Start-Process -FilePath (Gmh-Powershell) -ArgumentList (Gmh-StopArgs) -Verb RunAs -WindowStyle Hidden -PassThru -ErrorAction Stop
+    [void]$p.WaitForExit(30000)
+    Start-Sleep -Milliseconds 800
+    return "done"
+  } catch { return "cancel" }
 }
 
 # 예전 방식(시작 바로가기 + run.vbs) 흔적을 지운다
@@ -249,6 +388,7 @@ function Gmh-SelfTest([string]$How, [int]$TimeoutSec = 60) {
 #  · 루트에서 지우면 Windows 가 확인 창을 띄우므로 제거(제거.bat)할 때만 한다(-IncludeRoot).
 function Gmh-RemoveOldCert([switch]$IncludeRoot) {
   $n = 0
+  if ($GMH_SANDBOX) { return 0 }      # 인증서 저장소는 PC 의 것이라 시험 설치에서는 건드리지 않는다
   $stores = @("My", "TrustedPublisher")
   if ($IncludeRoot) { $stores += "Root" }
   foreach ($store in $stores) {
@@ -283,7 +423,9 @@ function Gmh-RegisterTask {
       $trigger = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
       $set     = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
       try { $set.ExecutionTimeLimit = "PT0S" } catch {}   # 시간 제한 없음(상주)
-      Register-ScheduledTask -TaskName $GMH_TASK -Action $action -Trigger $trigger -Settings $set -Force -ErrorAction Stop | Out-Null
+      # 이 계정 · 로그인했을 때만 · 일반 권한(관리자 권한 창에서 등록해도 도우미는 일반 권한으로 뜬다)
+      $prin    = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+      Register-ScheduledTask -TaskName $GMH_TASK -Action $action -Trigger $trigger -Settings $set -Principal $prin -Force -ErrorAction Stop | Out-Null
       # 예약 작업이 됐으면 예전 시작 바로가기는 필요 없다(둘 다 있으면 두 번 뜨려 한다)
       try { if (Test-Path -LiteralPath $GMH_OLD_LNK) { Remove-Item -LiteralPath $GMH_OLD_LNK -Force -ErrorAction SilentlyContinue } } catch {}
       return "task"
@@ -306,12 +448,14 @@ function Gmh-RegisterTask {
 }
 
 function Gmh-UnregisterTask {
-  try {
-    if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
-      Unregister-ScheduledTask -TaskName $GMH_TASK -Confirm:$false -ErrorAction SilentlyContinue
-    }
-  } catch {}
-  try { & schtasks.exe /Delete /TN $GMH_TASK /F 2>$null | Out-Null } catch {}
+  foreach ($t in @($GMH_TASK, $GMH_ONCE_TASK)) {
+    try {
+      if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue
+      }
+    } catch {}
+    try { & schtasks.exe /Delete /TN $t /F 2>$null | Out-Null } catch {}
+  }
 }
 
 function Gmh-TaskExists {
@@ -323,22 +467,63 @@ function Gmh-TaskExists {
   return $false
 }
 
-# 지금 띄운다. 예약 작업으로 먼저(로그인 때와 똑같은 길), 안 되면 직접.
-function Gmh-StartNow {
-  try {
-    if ((Gmh-TaskExists) -and (Get-Command Start-ScheduledTask -ErrorAction SilentlyContinue)) {
-      Start-ScheduledTask -TaskName $GMH_TASK -ErrorAction Stop
-      return $true
-    }
-  } catch {}
-  return (Gmh-StartDirect)
+# 지금 띄운다. 언제나 이 계정의 일반 권한으로 띄운다. 띄운 방법을 돌려준다("task" · "limited" · "direct", 못 띄우면 "").
+#   1) 로그온 예약 작업(로그인 때와 똑같은 길. 꺼 둔 작업은 건너뛴다) — -SkipTask 면 건너뛴다
+#   2) 관리자 권한 창이면 한 번 쓰는 일반 권한 예약 작업(Gmh-StartLimited). 여기서 바로 띄우면 도우미도 관리자
+#      권한이 되어, 일반 권한 프로그램(제거 · 다음 설치)이 그 도우미를 보지도 끄지도 못한다.
+#   3) 아니면 직접
+function Gmh-StartNow([switch]$SkipTask) {
+  if (-not $SkipTask) {
+    try {
+      if (Get-Command Start-ScheduledTask -ErrorAction SilentlyContinue) {
+        $t = Get-ScheduledTask -TaskName $GMH_TASK -ErrorAction SilentlyContinue
+        if ($t -and [string]$t.State -ne "Disabled") {
+          Start-ScheduledTask -TaskName $GMH_TASK -ErrorAction Stop
+          return "task"
+        }
+      }
+    } catch {}
+  }
+  if (Gmh-IsElevated) { return (Gmh-StartLimited) }
+  if (Gmh-StartDirect) { return "direct" }
+  return ""
 }
 function Gmh-StartDirect {
+  if (Gmh-IsElevated) { return $false }      # 관리자 권한 창에서는 직접 띄우지 않는다(Gmh-StartNow 참고)
   try {
     $cmd = Gmh-LaunchCommand
     Start-Process -FilePath $cmd[0] -ArgumentList $cmd[1] -WindowStyle Hidden -WorkingDirectory (Gmh-HostDir)
     return $true
   } catch { return $false }
+}
+# 이 계정의 일반 권한으로 도는 예약 작업을 한 번 만들어 띄우고 지운다(작업을 지워도 이미 뜬 도우미는 그대로 돈다).
+# 관리자 권한 창에서 일반 권한 도우미를 띄우는 방법이다. 띄웠으면 "limited", 못 띄우면 "".
+function Gmh-StartLimited {
+  if (-not (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue)) { return "" }
+  $ok = ""
+  try {
+    $cmd = Gmh-LaunchCommand
+    $action = New-ScheduledTaskAction -Execute $cmd[0] -Argument $cmd[1] -WorkingDirectory (Gmh-HostDir)
+    $prin   = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+    $set    = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    try { $set.ExecutionTimeLimit = "PT0S" } catch {}
+    Register-ScheduledTask -TaskName $GMH_ONCE_TASK -Action $action -Principal $prin -Settings $set -Force -ErrorAction Stop | Out-Null
+    $before = (Get-Date).AddSeconds(-2)
+    Start-ScheduledTask -TaskName $GMH_ONCE_TASK -ErrorAction Stop
+    $ok = "limited"
+    # 작업이 실제로 프로그램을 띄운 것을 본 뒤에 지운다(바쁜 PC 에서 띄우기 전에 지우면 실행이 취소될 수 있다)
+    $until = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $until) {
+      try {
+        $info = Get-ScheduledTaskInfo -TaskName $GMH_ONCE_TASK -ErrorAction Stop
+        if ($info.LastRunTime -and $info.LastRunTime -ge $before) { break }
+      } catch {}
+      Start-Sleep -Milliseconds 250
+    }
+    Start-Sleep -Milliseconds 500
+  } catch {}
+  try { Unregister-ScheduledTask -TaskName $GMH_ONCE_TASK -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+  return $ok
 }
 
 # host.log 의 지금 크기(이 뒤에 붙는 줄만 보려고)
@@ -349,13 +534,16 @@ function Gmh-LogSize {
 
 # 트레이가 실제로 준비될 때까지 기다린다. host.log 에서 $LogPos 뒤에 새로 붙은 줄을 본다.
 #   "ok"     트레이 준비 완료
+#   "busy"   '이미 실행 중' — 보이지 않는(관리자 권한으로 뜬) 도우미가 이름을 잡고 있어 새 도우미가 그냥 끝났다.
+#            v1.4.1 까지는 이것도 성공으로 보아, 탭이 붙지 않는 도우미만 남은 채 "설치가 끝났습니다" 가 나왔다.
 #   "slow"   프로세스는 떠 있는데 아직 준비 줄이 없다(느린 PC · 백신 검사 중)
 #   "none"   프로세스가 없다
-#   그 밖    host.log 에 적힌 오류 줄
+#   그 밖    host.log 에 적힌 오류 줄(다른 계정으로 떠서 끝냄 · 치명 오류)
 function Gmh-WaitTray([int]$Seconds = 40, [long]$LogPos = 0) {
   $f = Join-Path $GMH_DEST "host.log"
   $until = (Get-Date).AddSeconds($Seconds)
   $seen = $false
+  $busy = $false
   while ((Get-Date) -lt $until) {
     try {
       if (Test-Path -LiteralPath $f) {
@@ -365,7 +553,10 @@ function Gmh-WaitTray([int]$Seconds = 40, [long]$LogPos = 0) {
             [void]$fs.Seek($LogPos, [System.IO.SeekOrigin]::Begin)
             $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8)
             $new = $sr.ReadToEnd()
-            if ($new -match '트레이 준비 완료' -or $new -match '이미 실행 중') { return "ok" }
+            if ($new -match '트레이 준비 완료') { return "ok" }
+            if ($new -match '이미 실행 중') { $busy = $true }
+            $m = [regex]::Match($new, '다른 계정\([^\r\n]*')
+            if ($m.Success) { return $m.Value }
             $m = [regex]::Match($new, '치명 오류[^
 ]*')
             if ($m.Success) { return $m.Value }
@@ -373,11 +564,16 @@ function Gmh-WaitTray([int]$Seconds = 40, [long]$LogPos = 0) {
         } finally { $fs.Close() }
       }
     } catch {}
-    if ((Gmh-IsRunning) -gt 0) { $seen = $true }
+    $up = Gmh-IsRunning
+    # '이미 실행 중' 을 남기고 끝난 도우미가 있다. 여기서 보이는 도우미가 하나도 없으면 이름을 잡은 것은
+    # 보이지 않는(관리자 권한) 도우미다. 보이는 도우미가 있으면(늦게 뜬 예약 작업과 겹친 것) 그쪽이 준비되기를 기다린다.
+    if ($busy -and $up -eq 0) { return "busy" }
+    if ($up -gt 0) { $seen = $true }
     elseif ($seen) { return "none" }                    # 떴다가 사라졌다
     Start-Sleep -Milliseconds 500
   }
   if ((Gmh-IsRunning) -gt 0) { return "slow" }
+  if ($busy) { return "busy" }
   return "none"
 }
 

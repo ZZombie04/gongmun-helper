@@ -6,7 +6,7 @@ param(
   [switch]$Tray,            # 트레이 아이콘으로 조용히 상주
   [int]$IntervalMs = 1200,
   [int]$MaxLoops = 0,
-  [switch]$SelfTest,         # 설치 점검(창 없이 한 번 떠 보고 selftest.json 에 적는다)
+  [switch]$SelfTest,        # 설치 점검: 번들·엔진·화면 접근 모듈이 이 PC 에서 뜨는지 보고 selftest.json 에 적는다
   [switch]$Verbose
 )
 $here = $PSScriptRoot

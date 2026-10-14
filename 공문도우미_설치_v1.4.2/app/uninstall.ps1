@@ -3,7 +3,10 @@
 #    예전 판(1.0~1.3)이 깔린 PC 에서도 그대로 쓸 수 있다. 받은 설치 폴더의 제거.bat 으로도 실행된다.
 #  · 하는 일: 실행 중인 도우미 종료 → 자동 시작(예약 작업·시작 바로가기) 삭제 → 예전 인증서 정리 →
 #            설치 폴더 삭제 → 업데이트 때 내려받은 임시 폴더 삭제 → 남은 것이 있으면 알려 줌
-#  · 시험용 환경 변수: GMH_DEST(설치 폴더) · GMH_TASK(예약 작업 이름)
+#  · 관리자 권한 · 다른 계정으로 떠 있어 여기서 보이지 않는 도우미는 이름(뮤텍스)으로 알아내고,
+#    Windows 확인 창을 거쳐 끈다. 못 끄면 컴퓨터를 다시 시작하라고 알린다.
+#  · 시험용 환경 변수: GMH_DEST(설치 폴더) · GMH_TASK(예약 작업 이름) · GMH_MUTEX · GMH_LEGACY_MUTEX(도우미 이름) ·
+#    GMH_NO_ELEVATE(확인 창을 띄우지 않음)
 param([switch]$Silent, [switch]$Yes)
 $ErrorActionPreference = "Continue"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -13,6 +16,7 @@ try { chcp 65001 > $null } catch {}
 if ($env:GMH_MARK) { try { [System.IO.File]::WriteAllText($env:GMH_MARK, "started") } catch {} }
 
 $TASK    = if ($env:GMH_TASK) { $env:GMH_TASK } else { "공문도우미" }
+$TASKS   = @($TASK, ($TASK + "-시작"))      # 로그온 예약 작업 · 관리자 권한 창에서 일반 권한으로 띄울 때 잠깐 쓰는 작업
 $DEST    = if ($env:GMH_DEST) { $env:GMH_DEST } else { Join-Path $env:LOCALAPPDATA "GongmunHelper" }
 $SANDBOX = [bool]($env:GMH_TASK -or $env:GMH_DEST)
 $LNK     = Join-Path (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup") ($TASK + ".lnk")
@@ -24,17 +28,66 @@ function Done([int]$code) {
   exit $code
 }
 
+$SESS = -1
+try { $SESS = (Get-Process -Id $PID).SessionId } catch {}
+# 이 화면(세션)의 도우미만 센다(관리자 권한 창에서는 다른 사람 로그인의 도우미도 보이는데, 그것은 끄지 않는다)
 function HostProcesses {
   try {
     return @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='conhost.exe' OR Name='wscript.exe'" -ErrorAction Stop |
       Where-Object {
         $c = [string]$_.CommandLine
         if (-not $c -or $_.ProcessId -eq $PID) { return $false }
+        if ($SESS -ge 0 -and $_.SessionId -ne $SESS) { return $false }
         if (-not ($c -like '*host.ps1*-Tray*' -or ($c -like '*GMH_HOME*' -and $c -like '*-Tray*') -or $c -like '*GongmunHelper*run.vbs*')) { return $false }
         if ($SANDBOX) { return ($c -like ('*' + $DEST + '*')) }
         return $true
       })
   } catch { return @() }
+}
+
+# 일반 권한으로는 보이지 않는(관리자 권한 · 다른 계정으로 뜬) 도우미가 이 화면에 있는가 — 이름(뮤텍스)으로 본다.
+#   v1.4.2 부터: 이 세션 · 이 계정마다 하나 · v1.4.1 까지: PC 전체에서 하나(다른 사람 로그인의 것일 수도 있어,
+#   이 세션에 명령줄을 읽을 수 없는 PowerShell 이 있을 때만 이 화면의 것으로 본다)
+function MutexExists([string]$Name) {
+  if (-not $Name) { return $false }
+  $m = $null
+  try { $ok = [System.Threading.Mutex]::TryOpenExisting($Name, [ref]$m); if ($m) { $m.Dispose() }; return [bool]$ok }
+  catch [System.UnauthorizedAccessException] { return $true }
+  catch { return $false }
+}
+function HiddenHost {
+  $ours = if ($env:GMH_MUTEX) { $env:GMH_MUTEX } else { "Local\GongmunHelperTray-" + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value }
+  if (MutexExists $ours) { return "ours" }
+  $legacy = if ($env:GMH_LEGACY_MUTEX) { $env:GMH_LEGACY_MUTEX } elseif ($SANDBOX) { "" } else { "Global\GongmunHelperTray" }
+  if ($legacy -and (MutexExists $legacy)) {
+    if ($env:GMH_LEGACY_MUTEX) { return "legacy" }
+    try {
+      $n = @(Get-CimInstance Win32_Process -Filter ("Name='powershell.exe' AND SessionId=" + $SESS) -ErrorAction Stop |
+             Where-Object { $_.ProcessId -ne $PID -and -not $_.CommandLine }).Count
+      if ($n -gt 0) { return "legacy" }
+    } catch {}
+  }
+  return ""
+}
+# Windows 확인 창(UAC)을 거쳐, 이 화면(세션)에 관리자 권한 · 다른 계정으로 떠 있는 도우미를 끈다
+# 확인 창 뒤에서 도는 PowerShell 에 넘길 인자(설치의 gmh-common.ps1 Gmh-StopArgs 와 같다). 시험 제거에서는 그 폴더의 도우미만.
+function StopArgs {
+  $only = $(if ($SANDBOX) { " -and [string]`$_.CommandLine -like '*" + $DEST.Replace("'", "''") + "*'" } else { "" })
+  $cmd = "Get-CimInstance Win32_Process -Filter 'SessionId=" + [Math]::Max(0, $SESS) + "' | " +
+         'Where-Object { $_.ProcessId -ne $PID -and @(''powershell.exe'',''conhost.exe'',''wscript.exe'') -contains $_.Name -and ' +
+         '[string]$_.CommandLine -match ''host\.ps1.*-Tray|GMH_HOME.*-Tray|GongmunHelper.*run\.vbs''' + $only + ' } | ' +
+         'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }'
+  return ('-NoProfile -WindowStyle Hidden -Command "' + $cmd + '"')
+}
+function StopElevated {
+  if ($SANDBOX -or $env:GMH_NO_ELEVATE) { return "skip" }
+  $ps = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
+  try {
+    $p = Start-Process -FilePath $ps -ArgumentList (StopArgs) -Verb RunAs -WindowStyle Hidden -PassThru -ErrorAction Stop
+    [void]$p.WaitForExit(30000)
+    Start-Sleep -Milliseconds 800
+    return "done"
+  } catch { return "cancel" }
 }
 
 Write-Host ""
@@ -64,14 +117,24 @@ $until = (Get-Date).AddSeconds(8)
 while ((Get-Date) -lt $until -and @(HostProcesses).Count -gt 0) { Start-Sleep -Milliseconds 250 }
 $up = @(HostProcesses).Count
 if ($up -gt 0) { Line ("        [주의] 끝나지 않은 프로세스 " + $up + "개가 있습니다.") "Yellow" }
+$hidden = HiddenHost
+if ($hidden) {
+  Line "        관리자 권한으로 떠 있는 공문 도우미가 있어 끕니다." "Yellow"
+  Line "        Windows 확인 창이 뜨면 [예] 를 누르세요(관리자 암호를 모르면 [아니요])." "Yellow"
+  [void](StopElevated)
+  $hidden = HiddenHost
+  if (-not $hidden) { Line "        껐습니다." "DarkGray" }
+}
 
 Line "  [2/5] 자동 시작 등록을 지웁니다..."
-try {
-  if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
-    Unregister-ScheduledTask -TaskName $TASK -Confirm:$false -ErrorAction SilentlyContinue
-  }
-} catch {}
-try { & schtasks.exe /Delete /TN $TASK /F 2>$null | Out-Null } catch {}
+foreach ($t in $TASKS) {
+  try {
+    if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
+      Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue
+    }
+  } catch {}
+  try { & schtasks.exe /Delete /TN $t /F 2>$null | Out-Null } catch {}
+}
 try { if (Test-Path -LiteralPath $LNK) { Remove-Item -LiteralPath $LNK -Force -ErrorAction SilentlyContinue } } catch {}
 $taskLeft = $false
 try { if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) { $taskLeft = [bool](Get-ScheduledTask -TaskName $TASK -ErrorAction SilentlyContinue) } } catch {}
@@ -79,8 +142,9 @@ try { if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) { $taskLe
 Line "  [3/5] 예전 판이 만든 인증서를 정리합니다..."
 $hasRoot = $false
 try { $hasRoot = [bool](Get-ChildItem Cert:\CurrentUser\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -eq $CERT }) } catch {}
-if ($hasRoot) { Line "        '신뢰할 수 있는 루트'에서 지울 때 Windows 확인 창이 뜹니다. [예] 를 누르세요." "Yellow" }
-foreach ($store in @("My", "TrustedPublisher", "Root")) {
+if ($hasRoot -and -not $SANDBOX) { Line "        '신뢰할 수 있는 루트'에서 지울 때 Windows 확인 창이 뜹니다. [예] 를 누르세요." "Yellow" }
+# 인증서 저장소는 PC 의 것이라 시험 제거(GMH_DEST · GMH_TASK)에서는 건드리지 않는다
+foreach ($store in $(if ($SANDBOX) { @() } else { @("My", "TrustedPublisher", "Root") })) {
   try {
     Get-ChildItem ("Cert:\CurrentUser\" + $store) -ErrorAction SilentlyContinue | Where-Object { $_.Subject -eq $CERT } | ForEach-Object {
       try {
@@ -135,6 +199,9 @@ if (Test-Path -LiteralPath $DEST) {
 if ($taskLeft) {
   $code = 1
   Line "  [주의] 예약 작업 '공문도우미'를 지우지 못했습니다. 작업 스케줄러에서 직접 지워 주세요." "Yellow"
+}
+if ($hidden) {
+  Line "  [주의] 관리자 권한으로 떠 있는 공문 도우미를 끄지 못했습니다. 컴퓨터를 다시 시작하면 사라집니다." "Yellow"
 }
 Write-Host ""
 Line "  브라우저 확장 '공문 도우미'를 넣으셨다면 edge://extensions (크롬은 chrome://extensions) 에서 직접 제거해 주세요."

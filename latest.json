@@ -1,8 +1,8 @@
 {
- "version": "1.4.1",
- "released": "2026-10-13",
- "zip": "https://raw.githubusercontent.com/ZZombie04/gongmun-helper/v1.4.1/%EA%B3%B5%EB%AC%B8%EB%8F%84%EC%9A%B0%EB%AF%B8_%EC%84%A4%EC%B9%98_v1.4.1_%EC%86%8D%EC%84%B1%EC%97%90%EC%84%9C_%EC%B0%A8%EB%8B%A8%ED%95%B4%EC%A0%9C_%ED%9B%84_%EC%95%95%EC%B6%95%ED%92%80%EA%B8%B0.zip",
- "sha256": "84b0a5934bda99b618b7e49b8d724c4237c81a552ccaff68f9cdca199253219b",
+ "version": "1.4.2",
+ "released": "2026-10-15",
+ "zip": "https://raw.githubusercontent.com/ZZombie04/gongmun-helper/v1.4.2/%EA%B3%B5%EB%AC%B8%EB%8F%84%EC%9A%B0%EB%AF%B8_%EC%84%A4%EC%B9%98_v1.4.2_%EC%86%8D%EC%84%B1%EC%97%90%EC%84%9C_%EC%B0%A8%EB%8B%A8%ED%95%B4%EC%A0%9C_%ED%9B%84_%EC%95%95%EC%B6%95%ED%92%80%EA%B8%B0.zip",
+ "sha256": "230d5793ba88c1e2cb11636cd9cf84ddf47bc858c129177cd2e351278e9c9abb",
  "page": "https://github.com/ZZombie04/gongmun-helper#readme",
- "notes": "받은 zip 을 [차단 해제] 하지 않고 풀어도 설치되고, 설치한 뒤 실제로 뜨는지 점검해 안 되면 이유를 알려 줍니다. 제거가 끝까지 됩니다. 수신자 일괄추가에서 한 번 실행한 뒤 실행 단추가 사라지던 문제를 고쳤고 [처음부터 다시] · [다시 시도] 가 생겼습니다. [작성] 탭의 표가 한글 표로 들어갑니다. (v1.4.1: 표의 칸 너비를 다듬어 짧은 칸이 한 글자씩 꺾이지 않습니다)"
+ "notes": "트레이에 '실행 중' 인데 기안 창에 [공문도우미] 탭이 뜨지 않던 문제를 고쳤습니다. 설치.bat 을 관리자 권한으로 실행했던 PC 에 남아 있던 도우미를 정리하고, 새 도우미는 언제나 지금 로그인한 계정의 일반 권한으로 뜹니다."
 }
