@@ -29,7 +29,7 @@ $GMH_ONCE_TASK = $GMH_TASK + "-시작"                          # 관리자 권�
 # 프로그램 파일(다시 설치할 때 지우고 새로 쓴다). 여기 없는 것 — settings.json(설정) · update.json ·
 # host.log · install.log · autologin.log · inbox\ — 은 사용자 것이라 그대로 둔다.
 $GMH_PROGRAM_ITEMS = @("dist", "tools", "src", "data", "edge-ext", "gmh-common.ps1", "uninstall.ps1",
-                       "uninstall.cmd", "제거.bat", "run.vbs", "launch.txt", "selftest.json", "relaunch.txt")
+                       "uninstall.cmd", "제거.bat", "run.vbs", "launch.txt", "selftest.json", "relaunch.txt", "install-id.txt")
 
 function Gmh-HostPath { return (Join-Path $GMH_DEST "tools\host.ps1") }
 function Gmh-HostDir  { return (Join-Path $GMH_DEST "tools") }   # 호스트는 이 폴더에서 돈다(로더도 GMH_HOME 을 넣는다)

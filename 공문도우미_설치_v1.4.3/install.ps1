@@ -30,7 +30,7 @@ if (-not $commonOk) {
   try { . ([scriptblock]::Create([System.IO.File]::ReadAllText($commonPath, [System.Text.Encoding]::UTF8))); $commonOk = $true } catch {}
 }
 
-$VER = "1.4.2"
+$VER = "1.4.3"
 function Line($t, $c = "Gray") { Write-Host $t -ForegroundColor $c }
 function Done([int]$code) {
   if (-not $Silent -and -not $Check) { Write-Host ""; Read-Host "  엔터를 누르면 닫힙니다" | Out-Null }
@@ -124,6 +124,9 @@ try {
   $count = Gmh-CopyTree $Source $GMH_DEST
   # v1.1 이 따로 붙이던 서식 모듈 — 이제 본체의 [작성] 탭에 들어 있다
   Remove-Item -LiteralPath (Join-Path $GMH_DEST "dist\gmh-tpl.js") -Force -ErrorAction SilentlyContinue
+  # 설치 번호: 설치(다시 설치·업데이트 포함)마다 새로 쓴다. 호스트가 주입할 때 화면에 알려 주고,
+  # 화면은 이 창에 저장된 설정이 다른 번호면 지우고 새로 시작한다 → 다시 설치·업데이트가 늘 깨끗하다.
+  try { [System.IO.File]::WriteAllText((Join-Path $GMH_DEST "install-id.txt"), ([guid]::NewGuid().ToString("N")), (New-Object System.Text.UTF8Encoding($false))) } catch {}
 } catch {
   Line ("  [오류] 파일 설치 실패: " + $_.Exception.Message) "Red"
   Line "         · 트레이의 공문 도우미를 [종료] 하고, 기안 창과 브라우저를 닫은 뒤 다시 실행해 보세요." "Yellow"

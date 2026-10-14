@@ -1,8 +1,8 @@
 {
- "version": "1.4.2",
+ "version": "1.4.3",
  "released": "2026-10-15",
- "zip": "https://raw.githubusercontent.com/ZZombie04/gongmun-helper/v1.4.2/%EA%B3%B5%EB%AC%B8%EB%8F%84%EC%9A%B0%EB%AF%B8_%EC%84%A4%EC%B9%98_v1.4.2_%EC%86%8D%EC%84%B1%EC%97%90%EC%84%9C_%EC%B0%A8%EB%8B%A8%ED%95%B4%EC%A0%9C_%ED%9B%84_%EC%95%95%EC%B6%95%ED%92%80%EA%B8%B0.zip",
- "sha256": "230d5793ba88c1e2cb11636cd9cf84ddf47bc858c129177cd2e351278e9c9abb",
+ "zip": "https://raw.githubusercontent.com/ZZombie04/gongmun-helper/v1.4.3/%EA%B3%B5%EB%AC%B8%EB%8F%84%EC%9A%B0%EB%AF%B8_%EC%84%A4%EC%B9%98_v1.4.3_%EC%86%8D%EC%84%B1%EC%97%90%EC%84%9C_%EC%B0%A8%EB%8B%A8%ED%95%B4%EC%A0%9C_%ED%9B%84_%EC%95%95%EC%B6%95%ED%92%80%EA%B8%B0.zip",
+ "sha256": "0d8de6c217fec1a3cbf9d6037d934dd1599dd13e2842a5e843a0751cbdc38782",
  "page": "https://github.com/ZZombie04/gongmun-helper#readme",
- "notes": "트레이에 '실행 중' 인데 기안 창에 [공문도우미] 탭이 뜨지 않던 문제를 고쳤습니다. 설치.bat 을 관리자 권한으로 실행했던 PC 에 남아 있던 도우미를 정리하고, 새 도우미는 언제나 지금 로그인한 계정의 일반 권한으로 뜹니다."
+ "notes": "트레이 [프로그램 삭제] 가 생겼고, 삭제·업데이트가 설정·기록·프리셋까지 모두 지워 설치하기 전으로 되돌립니다. 예전 판·망가진 설치를 흔적 없이 지우는 '완전삭제' 도구를 함께 올립니다."
 }

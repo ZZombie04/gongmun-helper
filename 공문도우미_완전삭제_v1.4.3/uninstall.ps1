@@ -90,6 +90,68 @@ function StopElevated {
   } catch { return "cancel" }
 }
 
+# 열려 있는 K-에듀파인 기안 창에서, 그 사이트에 저장해 둔 도우미 설정(결재·수신 프리셋·패널 위치)과 화면을 지운다.
+# 창을 닫아 두었으면 지울 창이 없지만, 다음에 설치할 때 '설치 번호'가 달라 자동으로 새로 시작하므로 어차피 깨끗하다.
+# 지운 창 수를 돌려준다. 어떤 오류도 제거를 막지 않는다(전부 try/catch).
+$GMH_WIPE_JS = "try{var g=window.__GMH__;if(g){if(g._ui)g._ui.boot=function(){};if(g.wipe)g.wipe();else if(g.teardown)g.teardown();}}catch(e){}" +
+  "try{window.__RCVR__&&window.__RCVR__.teardown&&window.__RCVR__.teardown();}catch(e){}" +
+  "try{window.localStorage.removeItem('GMH_SETTINGS_V1');window.localStorage.removeItem('GMH_SETTINGS_V1_probe');}catch(e){}" +
+  "try{document.cookie='GMH_SETTINGS_V1=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';}catch(e){}" +
+  "try{var h=document.documentElement;h.removeAttribute('data-gmh-installed');h.removeAttribute('data-gmh-build');h.removeAttribute('data-gmh-install');h.removeAttribute('data-rcver-installed');}catch(e){}" +
+  "try{window.__GMH_INSTALLED__=false;window.__RCVR_INSTALLED__=false;}catch(e){}"
+function ClearPageData {
+  $n = 0
+  try {
+    if (-not ("GmhUninIE" -as [type])) {
+      Add-Type -TypeDefinition @"
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public class GmhUninIE {
+  public delegate bool EnumProc(IntPtr h, IntPtr p);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr p);
+  [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr h, EnumProc cb, IntPtr p);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint RegisterWindowMessage(string s);
+  [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr wp, IntPtr lp, uint flags, uint timeout, out IntPtr res);
+  [DllImport("oleacc.dll", PreserveSig=false)]
+  [return: MarshalAs(UnmanagedType.Interface)]
+  public static extern object ObjectFromLresult(IntPtr lResult, ref Guid riid, IntPtr wParam);
+  static string ClassOf(IntPtr h){ var sb=new StringBuilder(256); GetClassName(h,sb,256); return sb.ToString(); }
+  public static List<IntPtr> FindServers(){
+    var tops=new List<IntPtr>(); EnumWindows(delegate(IntPtr h, IntPtr p){ tops.Add(h); return true; }, IntPtr.Zero);
+    var res=new List<IntPtr>();
+    foreach(var t in tops){
+      if(ClassOf(t)=="Internet Explorer_Server" && !res.Contains(t)) res.Add(t);
+      var local=new List<IntPtr>(); EnumChildWindows(t, delegate(IntPtr c, IntPtr p){ local.Add(c); return true; }, IntPtr.Zero);
+      foreach(var k in local){ if(ClassOf(k)=="Internet Explorer_Server" && !res.Contains(k)) res.Add(k); }
+    }
+    return res;
+  }
+  public static object GetDocument(IntPtr h){
+    uint msg=RegisterWindowMessage("WM_HTML_GETOBJECT"); IntPtr r;
+    SendMessageTimeout(h, msg, IntPtr.Zero, IntPtr.Zero, 2, 4000, out r);
+    if(r==IntPtr.Zero) return null;
+    Guid iid=new Guid("332C4425-26CB-11D0-B483-00C04FD90119");
+    return ObjectFromLresult(r, ref iid, IntPtr.Zero);
+  }
+}
+"@
+    }
+    foreach ($h in [GmhUninIE]::FindServers()) {
+      $doc = $null
+      try { $doc = [GmhUninIE]::GetDocument($h) } catch { continue }
+      if ($null -eq $doc) { continue }
+      $url = ""
+      try { $url = [string]$doc.url } catch { continue }
+      if ($url -notlike "*klef.goe.go.kr*") { continue }
+      try { $doc.parentWindow.execScript($GMH_WIPE_JS, "JavaScript") | Out-Null; $n++ } catch {}
+    }
+  } catch {}
+  return $n
+}
+
 Write-Host ""
 Line "  ============================================" "Cyan"
 Line "     공문 도우미 제거" "Cyan"
@@ -117,6 +179,9 @@ $until = (Get-Date).AddSeconds(8)
 while ((Get-Date) -lt $until -and @(HostProcesses).Count -gt 0) { Start-Sleep -Milliseconds 250 }
 $up = @(HostProcesses).Count
 if ($up -gt 0) { Line ("        [주의] 끝나지 않은 프로세스 " + $up + "개가 있습니다.") "Yellow" }
+# 열려 있는 K-에듀파인 창에서 도우미와 저장된 설정(프리셋·패널 위치)을 지운다(설치하기 전으로 되돌리기)
+$pageWiped = ClearPageData
+if ($pageWiped -gt 0) { Line ("        열려 있는 K-에듀파인 창 " + $pageWiped + "개의 저장된 설정을 지웠습니다.") "DarkGray" }
 $hidden = HiddenHost
 if ($hidden) {
   Line "        관리자 권한으로 떠 있는 공문 도우미가 있어 끕니다." "Yellow"
@@ -193,8 +258,12 @@ if (Test-Path -LiteralPath $DEST) {
     Line ("    남은 폴더: " + $DEST) "Yellow"
   }
 } else {
-  Line "  제거가 끝났습니다." "Green"
-  Line "  결재·수신 프리셋과 패널 위치는 K-에듀파인 창의 저장소에 남아 있어, 다시 설치하면 그대로 쓸 수 있습니다."
+  Line "  제거가 끝났습니다. 설치하기 전으로 되돌렸습니다." "Green"
+  if ($pageWiped -gt 0) {
+    Line "  열려 있던 K-에듀파인 창의 저장된 설정(프리셋·패널 위치)도 지웠습니다."
+  } else {
+    Line "  (K-에듀파인 창을 닫아 두셨다면, 저장된 설정은 다음에 설치할 때 자동으로 새로 시작됩니다.)"
+  }
 }
 if ($taskLeft) {
   $code = 1
